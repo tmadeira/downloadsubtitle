@@ -1,0 +1,33 @@
+#!/bin/bash
+
+usage() {
+    echo "Usage: $0 <file> [lang]"
+    echo "Examples:"
+    echo "$ $0 movie.avi pob         # brazilian portuguese"
+    echo "$ $0 movie.avi por,pob     # any portuguese"
+    echo "$ $0 movie.avi eng         # english"
+    echo "$ $0 movie.avi all         # any language"
+    exit
+}
+
+if [ $# -lt 1 ]; then
+    usage
+elif [ $# -gt 2 ]; then
+    usage
+fi
+
+if [ $# = 2 ]; then
+    lang=$2
+else
+    lang="any"
+fi
+
+output=$(echo "$1" | sed 's/\.[^.]*$/.srt/')
+oshash=$(oshash "$1")
+echo "Movie hash: $oshash"
+subid=$(wget "http://www.opensubtitles.org/en/search/sublanguageid-$lang/moviehash-$oshash/rss_2_00" -q -O - \
+    | grep '<link>.*en/subtitles' | sed 's|.*en/subtitles/||; s|/.*||' | head -n1)
+echo "Subtitle ID: $subid"
+wget "http://www.opensubtitles.org/en/subtitleserve/sub/$subid" -q -O - | gunzip > "$output" 2> /dev/null
+echo "Subtitle: $output"
+
