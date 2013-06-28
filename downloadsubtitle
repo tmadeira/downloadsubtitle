@@ -19,14 +19,15 @@ fi
 if [ $# = 2 ]; then
     lang=$2
 else
-    lang="any"
+    lang="all"
 fi
 
+echo "Requested language: $lang"
 output=$(echo "$1" | sed 's/\.[^.]*$/.srt/')
 oshash=$(oshash "$1")
 echo "Movie hash: $oshash"
 subid=$(wget "http://www.opensubtitles.org/en/search/sublanguageid-$lang/moviehash-$oshash/rss_2_00" -q -O - \
-    | grep '<link>.*en/subtitles' | sed 's|.*en/subtitles/||; s|/.*||' | head -n1)
+    | grep '.*en/subtitles' | sed 's|.*en/subtitles/||; s|/.*||' | head -n1)
 echo "Subtitle ID: $subid"
 wget "http://www.opensubtitles.org/en/subtitleserve/sub/$subid" -q -O - | gunzip > "$output" 2> /dev/null
 echo "Subtitle: $output"
