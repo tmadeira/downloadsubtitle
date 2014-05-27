@@ -30,6 +30,7 @@ if [ "$?" = 1 ]; then
     exit
 fi
 echo "Movie hash: $oshash"
+
 subid=$(wget "http://www.opensubtitles.org/en/search/sublanguageid-$lang/moviehash-$oshash/rss_2_00" -q -O - \
     | grep '.*en/subtitles' | sed 's|.*en/subtitles/||; s|/.*||' | head -n1)
 if [ -z "$subid" ]; then
@@ -37,6 +38,24 @@ if [ -z "$subid" ]; then
     exit
 fi
 echo "Subtitle ID: $subid"
-wget "http://www.opensubtitles.org/en/subtitleserve/sub/$subid" -q -O - | gunzip > "$output" 2> /dev/null
-echo "Subtitle: $output"
 
+tmp_zip=/tmp/$subid.zip
+tmp_dir=/tmp/$subid
+download_url=http://dl.opensubtitles.org/en/download/sub/$subid
+
+echo "Downloading: $download_url"
+wget $download_url -q -O $tmp_zip
+unzip -d $tmp_dir $tmp_zip > /dev/null && rm $tmp_zip
+
+if [ -f $tmp_dir/$output ]; then
+  subtitle=$tmp_dir/$output
+else
+  echo "  > Multiple subtitles found: $(ls -1 $tmp_dir/*.srt)"
+  subtitle=$(ls -1 $tmp_dir/*.srt | head -n1)
+  echo "  > Choosing: $subtitle"
+fi
+cp $subtitle $output
+rm -rf $tmp_dir
+
+echo "Subtitle: $output"
+echo "Enjoy! [DONE]"
