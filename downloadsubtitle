@@ -1,5 +1,10 @@
 #!/bin/bash
 
+path=$(dirname $0)/oshash
+if [ ! -e "$path" ]; then
+  cc -o $path $path.c
+fi
+
 usage() {
     echo "Usage: $0 <file> [lang]"
     echo "Examples:"
@@ -10,33 +15,37 @@ usage() {
     exit
 }
 
-if [ $# -lt 1 ]; then
-    usage
-elif [ $# -gt 2 ]; then
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
     usage
 fi
 
 if [ $# = 2 ]; then
     lang=$2
 else
-    lang="all"
+    lang="eng"
 fi
 
 echo "Requested language: $lang"
 output=$(echo "$1" | sed 's/\.[^.]*$/.srt/')
-oshash=$(oshash "$1")
+oshash=$($path "$1")
 if [ "$?" = 1 ]; then
     echo "Error: oshash returned 1"
     exit
 fi
 echo "Movie hash: $oshash"
-subid=$(wget "http://www.opensubtitles.org/en/search/sublanguageid-$lang/moviehash-$oshash/rss_2_00" -q -O - \
-    | grep '.*en/subtitles' | sed 's|.*en/subtitles/||; s|/.*||' | head -n1)
+url="http://www.opensubtitles.org/en/search/sublanguageid-$lang/moviehash-$oshash/rss_2_00"
+subid=$(wget "$url" -q -O - | grep '.*en/subtitles' | sed 's|.*en/subtitles/||; s|/.*||' | head -n1)
 if [ -z "$subid" ]; then
     echo "Error: subtitle not found"
     exit
 fi
 echo "Subtitle ID: $subid"
-wget "http://www.opensubtitles.org/en/subtitleserve/sub/$subid" -q -O - | gunzip > "$output" 2> /dev/null
+url=`wget "http://www.opensubtitles.org/en/subtitleserve/sub/$subid" -q -O - \
+  | grep -o 'http://dl.opensubtitles[^"]*' | head -n1`
+
+TMPFILE=`mktemp`
+wget "$url" -q -O $TMPFILE
+srt=`unzip -l $TMPFILE | awk '{print $4}' | grep 'srt$'`
+unzip -p "$TMPFILE" "$srt" > "$output"
 echo "Subtitle: $output"
 
